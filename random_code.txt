@@ -1,0 +1,10 @@
+Gson gson = new GsonBuilder().serializeNulls().setPrettyPrinting().create();
+            String json = gson.toJson(response);
+
+3 tables - 
+customer(customerid, age) 
+book(bookid, genre)
+order(orderid, bookid, customerid)
+
+most popular genre among teenagers
+answer - take join of all these tables, where condition on age, group by genre and get the genre with max count of order id
