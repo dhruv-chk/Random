@@ -1,0 +1,65 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation for ORG Glue Crawler and tables
+
+Parameters:
+  Environment:
+    Description: Environment the resources should be associated with.
+    Type: String
+    Default: dev
+    AllowedValues: ['dev', 'qa', 'demo', 'prod']
+
+Resources:
+# Create IAM Role assumed by the crawler. For demonstration, this role is given all permissions.
+  CrawlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "glue.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: "root"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: "*"
+                Resource: "*"
+
+# Create a database to contain tables created by the crawler
+  GlueCrawlerDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub "ORG_${Environment}"
+        Description: "AWS Glue container to hold metadata tables for the meter data minute data on S3 bucket"
+  
+  RawTable:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Sub "ORG_${Environment}"
+      Role: !GetAtt CrawlerRole.Arn
+      #Classifiers: none, use the default classifier
+      Description: AWS Glue crawler to crawl s3 data
+      # Schedule:
+      #   ScheduleExpression: "cron(0 0 4 * * ?)"
+      DatabaseName: !Ref GlueCrawlerDatabase
+      Targets:
+        S3Targets:
+          # S3 bucket with the geotab data
+          - Path: !Sub "s3://ORG-${Environment}"
+      SchemaChangePolicy:
+        UpdateBehavior: "LOG"
+        DeleteBehavior: "LOG"
+      Configuration: "{\"Version\":1.0,\"CrawlerOutput\":{\"Partitions\":{\"AddOrUpdateBehavior\":\"InheritFromTable\"}}}"
